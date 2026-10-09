@@ -18,13 +18,13 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen flex-col bg-ink">
       <header className="border-b border-white/5 bg-ink/80 backdrop-blur-md">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-8">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
           <Logo />
           <button
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-violet-400 hover:text-violet-300 disabled:opacity-60 sm:px-5"
+            className="shrink-0 whitespace-nowrap rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-violet-400 hover:text-violet-300 disabled:opacity-60 sm:px-5"
           >
             {signingOut ? "Signing out…" : "Sign out / 登出"}
           </button>
