@@ -3,42 +3,53 @@
 > 上傳影片，三分鐘內拿到逐字稿。
 > Upload your video, get a clean transcript in three minutes.
 
-SaaS landing page + authenticated app shell (Milestone 1). Built with Vite + React + TypeScript + Tailwind CSS v4, with Supabase Auth (email + password).
+SaaS landing page + Supabase email auth (M0), now on **Next.js 16 (App Router)** + Tailwind CSS v4 + `@supabase/ssr` as the base for M1 (AI video transcript).
 
 ## Routes
 
-| Path      | Access          | Description                                         |
-| --------- | --------------- | --------------------------------------------------- |
-| `/`       | Public          | Landing page: hero, 3 feature cards, footer         |
-| `/signup` | Guests only     | Email + password sign-up                            |
-| `/signin` | Guests only     | Email + password sign-in                            |
-| `/app`    | Signed-in only  | "Hi {email}" + placeholder dashboard, Sign out      |
+| Path       | Access          | Description                                         |
+| ---------- | --------------- | --------------------------------------------------- |
+| `/`        | Public          | Landing page: hero, 3 feature cards, footer         |
+| `/sign-up` | Guests only     | Email + password sign-up                            |
+| `/sign-in` | Guests only     | Email + password sign-in                            |
+| `/app`     | Signed-in only  | "Hi {email}" + placeholder dashboard, Sign out      |
+
+`/signin` and `/signup` (the old Vite routes) permanently redirect to the new names.
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in your Supabase URL + publishable key
-npm run dev
+cp .env.example .env.local   # fill in from Supabase, or from AWS Secrets Manager (us-east-1)
+npm run dev                  # http://localhost:3000
 ```
+
+## Environment variables
+
+| Variable | Where | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | browser + server | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser + server | `sb_publishable_…`, RLS-gated |
+| `SUPABASE_SECRET_KEY` | **server only** | `sb_secret_…`, bypasses RLS — never `NEXT_PUBLIC_`, never in a Client Component |
+
+Vercel has all three (the secret key only for Production + Preview, marked Sensitive). Vercel snapshots env vars at build time — redeploy after changing them.
+
+## Project layout
+
+- `app/` — Next.js routes (`layout.tsx`, `page.tsx`, `sign-in/`, `sign-up/`, `app/`)
+- `src/components/` — UI components (`PascalCase.tsx`)
+- `src/lib/supabase/client.ts` / `server.ts` — browser / server Supabase clients (`@/lib/...` alias → `src/`)
+- `middleware.ts` — refreshes the Supabase session cookie on every request
+- `supabase/migrations/` — every schema change as a timestamped migration (never ad-hoc SQL)
+- `.claude/skills/` — course skills (M0/M1 walkthroughs, checklists, AWS / Supabase / Whisper rules)
 
 ## Supabase
 
-- Auth only — uses Supabase's built-in `auth.users`. **No custom tables** in this milestone.
-- Email confirmation is expected to be **off** for v1 (Authentication → Sign In / Providers → Email → *Confirm email*). If it's on, sign-up shows a "check your inbox" message instead of signing in directly.
-- Any future schema change goes in `supabase/migrations/` as a timestamped migration file — never ad-hoc SQL in the dashboard.
-- Only the **publishable** key (`sb_publishable_…`) belongs in `VITE_*` env vars. Never the secret / service_role key.
+- Email confirmation is **off** (Authentication → Sign In / Providers → Confirm email).
+- Any schema change goes in `supabase/migrations/` as a timestamped migration file.
 
-## Project conventions
+## Conventions
 
-- React component files: `PascalCase.tsx`
-- Hooks / utils: `camelCase.ts`
+- React component files: `PascalCase.tsx`; hooks / utils: `camelCase.ts`
 - No real emails or names in code or fixtures — use `user@example.com`
-
-## Out of scope (later milestones)
-
-Video upload, transcript display, payments, `profiles` / `videos` tables.
-
-## Deploying (later)
-
-`vercel.json` already contains the SPA rewrite. On Vercel, set the framework preset to **Vite** and add `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` as environment variables.
+- Secrets live in AWS Secrets Manager / Vercel env, never in git

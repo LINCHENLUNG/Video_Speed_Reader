@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { Logo } from "./Logo";
 
 type AuthFormProps = {
@@ -102,14 +104,14 @@ export function AuthForm({ mode, onSubmit, error, notice }: AuthFormProps) {
             {isSignUp ? (
               <>
                 Already have an account?{" "}
-                <Link to="/signin" className="font-medium text-violet-400 hover:text-violet-300">
+                <Link href="/sign-in" className="font-medium text-violet-400 hover:text-violet-300">
                   Sign in / 登入
                 </Link>
               </>
             ) : (
               <>
                 New here?{" "}
-                <Link to="/signup" className="font-medium text-violet-400 hover:text-violet-300">
+                <Link href="/sign-up" className="font-medium text-violet-400 hover:text-violet-300">
                   Create an account / 註冊
                 </Link>
               </>

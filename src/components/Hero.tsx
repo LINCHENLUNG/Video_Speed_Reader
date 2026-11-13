@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { FadeIn } from "./FadeIn";
 import { ArrowRightIcon, CheckIcon } from "./Icons";
 
@@ -38,7 +38,7 @@ export function Hero() {
         <FadeIn delay={300}>
           <div className="mt-12 flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-8">
             <Link
-              to="/signup"
+              href="/sign-up"
               className="inline-flex items-center justify-center gap-3 rounded-xl bg-violet-400 px-8 py-4 text-lg font-semibold text-ink shadow-xl shadow-violet-500/25 transition hover:bg-violet-300"
             >
               Get started / 開始使用
