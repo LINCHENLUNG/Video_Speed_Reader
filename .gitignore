@@ -34,3 +34,8 @@ dist-ssr
 .next/
 out/
 *.tsbuildinfo
+
+# Python worker
+worker/venv/
+__pycache__/
+*.pyc
