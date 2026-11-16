@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const inputClass =
@@ -13,17 +14,23 @@ export function UploadForm() {
   const [language, setLanguage] = useState("zh");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outOfCredits, setOutOfCredits] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+    setOutOfCredits(false);
     try {
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ video_source_url: url.trim(), topic: topic.trim() || null, language }),
       });
+      if (res.status === 402) {
+        setOutOfCredits(true);
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? `Request failed (${res.status})`);
@@ -88,6 +95,15 @@ export function UploadForm() {
           </select>
         </div>
       </div>
+
+      {outOfCredits && (
+        <p role="alert" className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+          You&apos;re out of credits. / 點數不足。{" "}
+          <Link href="/credits" className="font-semibold text-violet-300 underline hover:text-violet-200">
+            Buy more credits / 購買點數
+          </Link>
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">

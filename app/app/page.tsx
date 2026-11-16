@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { WaveformIcon } from "@/components/Icons";
 import { SignOutButton } from "@/components/SignOutButton";
+import { CreditsBadge } from "@/components/CreditsBadge";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Dashboard · Video Speed Reader" };
@@ -21,6 +22,7 @@ export default async function Dashboard() {
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
           <Logo />
           <div className="flex items-center gap-2 sm:gap-3">
+            <CreditsBadge userId={user.id} />
             <Link
               href="/upload"
               className="whitespace-nowrap rounded-lg bg-violet-400 px-3 py-2.5 text-sm font-semibold text-ink shadow-lg shadow-violet-500/20 transition hover:bg-violet-300 sm:px-5"

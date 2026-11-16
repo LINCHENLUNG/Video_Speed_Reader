@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { SignOutButton } from "@/components/SignOutButton";
 import { UploadForm } from "@/components/UploadForm";
+import { CreditsBadge } from "@/components/CreditsBadge";
 import { createClient } from "@/lib/supabase/server";
 import { relativeTime } from "@/lib/relativeTime";
 
@@ -16,6 +17,7 @@ const STATUS_STYLES: Record<string, string> = {
   downloading: "border-zinc-500/30 bg-zinc-500/10 text-zinc-300",
   transcribe: "border-sky-400/30 bg-sky-400/10 text-sky-300",
   done: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+  insufficient_credits: "border-amber-400/30 bg-amber-400/10 text-amber-300",
 };
 
 function truncate(text: string, max = 50) {
@@ -44,6 +46,7 @@ export default async function UploadPage() {
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
           <Logo />
           <div className="flex items-center gap-2 sm:gap-3">
+            <CreditsBadge userId={user.id} />
             <Link
               href="/app"
               className="hidden whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-semibold text-zinc-300 transition hover:text-violet-300 sm:block"

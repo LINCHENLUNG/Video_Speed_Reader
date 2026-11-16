@@ -25,6 +25,17 @@ export async function POST(req: Request) {
   const language = LANGUAGES.has(body.language) ? body.language : "zh";
   const topic = typeof body.topic === "string" && body.topic.trim() ? body.topic.trim() : null;
 
+  // 1b. Cheap pre-check: block obviously unrunnable requests (balance below 1 credit).
+  // The precise duration-vs-balance check happens on the worker.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("credits_balance")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (Number(profile?.credits_balance ?? 0) < 1) {
+    return NextResponse.json({ error: "insufficient credits, buy more at /credits" }, { status: 402 });
+  }
+
   // 2. Use the Supabase Secret key to insert the job + session rows.
   // The user has already been authenticated above; the Secret key bypasses RLS
   // so we can insert in one round-trip without policy ping-pong.
