@@ -2,6 +2,11 @@
 M1 worker: processes one job, downloads the video, runs Whisper,
 writes TXT back to job_sessions.subtitle_txt_content.
 
+M2 (credits): 1 credit = 1 minute (rounded up, min 1). The job is claimed first,
+the duration is checked against the user's balance before any Whisper call
+(status 'insufficient_credits' if short), and credits are deducted only when the
+transcript has been saved, right before status 'done'.
+
 Started by distributor.py (one Popen per pending job). Reads JOB_ID from env.
 Reads OPENAI_API_KEY / SUPABASE_URL / SUPABASE_SECRET_KEY from AWS Secrets
 Manager — the EC2's IAM instance profile grants `secretsmanager:GetSecretValue`
@@ -127,17 +132,88 @@ def transcribe_chunk(chunk_path: Path, language: str) -> str:
         )
 
 
+def probe_minutes_cheap(url: str) -> int | None:
+    """Duration in credits WITHOUT downloading, or None if unknown.
+
+    yt-dlp prints the literal string 'NA' for some sources (direct mp4 URLs);
+    any error or timeout also means 'unknown', never a crash.
+    """
+    if not url.startswith(("http://", "https://")):
+        return None
+    try:
+        out = subprocess.run(
+            ["yt-dlp", "--print", "duration", "--no-warnings", url],
+            capture_output=True, text=True, timeout=30, check=True,
+        ).stdout.strip()
+        seconds = float(out.splitlines()[0]) if out else None
+    except (subprocess.SubprocessError, ValueError, IndexError):
+        return None
+    if seconds is None or seconds <= 0:
+        return None
+    return max(1, math.ceil(seconds / 60))
+
+
+def probe_minutes_from_file(path: Path) -> int:
+    return max(1, math.ceil(get_duration_seconds(path) / 60))
+
+
+def get_balance(user_id: str) -> float:
+    rows = db.table("profiles").select("credits_balance").eq("id", user_id).limit(1).execute().data
+    return float(rows[0]["credits_balance"]) if rows else 0.0
+
+
+def block_insufficient(job: dict, minutes: int, balance: float) -> None:
+    """No Whisper call, nothing charged: mark the job and leave a 0-amount ledger note."""
+    update_job(job["id"], status="insufficient_credits")
+    db.table("credit_transactions").insert({
+        "user_id": job["user_id"],
+        "amount": 0,
+        "type": "deduction",
+        "description": f"Insufficient credits: video is {minutes} min, you have {int(balance)}",
+        "job_id": job["id"],
+    }).execute()
+    print(f"[{job['id']}] insufficient credits: needs {minutes}, has {balance}")
+
+
+def deduct_credits(job: dict, minutes: int) -> None:
+    db.table("credit_transactions").insert({
+        "user_id": job["user_id"],
+        "amount": -minutes,
+        "type": "deduction",
+        "description": f"Transcribed {minutes} min video",
+        "job_id": job["id"],
+    }).execute()
+    # Read-then-write (accepted v1 race: one worker per job, sequential distributor).
+    new_balance = max(0.0, get_balance(job["user_id"]) - minutes)
+    db.table("profiles").update({"credits_balance": new_balance}).eq("id", job["user_id"]).execute()
+
+
 def main() -> None:
     job_id = os.environ["JOB_ID"]
     job = get_job(job_id)
     session_id = job["current_session_id"]
 
+    # Claim the job FIRST: if anything below crashes it is 'downloading', not 'pending',
+    # so the distributor will not re-spawn it in a loop.
     update_job(job_id, status="downloading")
     print(f"[{job_id}] downloading {job['video_source_url']}")
+
+    balance = get_balance(job["user_id"])
+    minutes = probe_minutes_cheap(job["video_source_url"])
+    if minutes is not None and minutes > balance:
+        block_insufficient(job, minutes, balance)
+        return
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         video = download_video(job["video_source_url"], tmp_path)
+
+        if minutes is None:
+            minutes = probe_minutes_from_file(video)
+            if minutes > balance:
+                block_insufficient(job, minutes, balance)
+                return
+
         mp3 = to_mp3(video, tmp_path)
 
         update_job(job_id, status="transcribe")
@@ -147,6 +223,10 @@ def main() -> None:
         full_text = "\n\n".join(transcribe_chunk(c, job["language"]) for c in chunks)
 
         update_session(session_id, subtitle_txt_content=full_text)
+        try:
+            deduct_credits(job, minutes)
+        except Exception as exc:  # transcript is already saved: don't strand the job
+            print(f"[{job_id}] CREDIT DEDUCTION FAILED ({minutes} min): {exc!r} — reconcile manually")
         update_job(job_id, status="done")
 
     print(f"[{job_id}] done — {len(full_text)} chars")
