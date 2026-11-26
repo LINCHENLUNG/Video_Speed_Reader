@@ -7,11 +7,12 @@ the duration is checked against the user's balance before any Whisper call
 (status 'insufficient_credits' if short), and credits are deducted only when the
 transcript has been saved, right before status 'done'.
 
-Started with JOB_ID in env: by the M4 Lambda distributor as one ECS Fargate task
-per job, or (M1 fallback) by distributor.py on the EC2.
+Started with JOB_ID in env by the M4 Lambda distributor (lambda_distributor.py),
+one ECS Fargate task per job. (The M1 EC2 + distributor.py were retired 2026-11-26.)
 OPENAI_API_KEY / SUPABASE_URL / SUPABASE_SECRET_KEY come from env when all three
 are set (Fargate: the task definition's `secrets` pulls them from Secrets
-Manager at start), otherwise straight from Secrets Manager (EC2 instance profile).
+Manager at start), otherwise straight from Secrets Manager (e.g. a local run with
+AWS credentials).
 No credentials ever live on disk or in the image.
 """
 import math
